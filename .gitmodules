@@ -1,0 +1,6 @@
+[submodule "AtixBackEnd"]
+	path = AtixBackEnd
+	url = https://github.com/marcomanfrin/AtixBackEnd.git
+[submodule "AtixFrontEnd"]
+	path = AtixFrontEnd
+	url = https://github.com/marc04AM/atixfrontend.git
