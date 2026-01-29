@@ -3,3 +3,7 @@
 
 # Backup directories
 *.backup
+
+.env
+.env.example
+env.properties
