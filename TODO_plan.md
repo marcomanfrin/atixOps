@@ -6,11 +6,11 @@
 - **File:** `docker-compose.yml`
 - Aggiungere `restart: unless-stopped` a tutti i 6 servizi (postgres, minio, backend, frontend, nginx, certbot)
 
-### 2. Ordinamento work_report_entry per data (più recente → più vecchia)
-- **Approccio più semplice:** aggiungere `@OrderBy("date DESC")` sulla collection `entries` in `WorkReport.java` (line 31)
+### 2. Ordinamento work_report_entry per data (più vecchia → più recente)
+- **Approccio più semplice:** aggiungere `@OrderBy("date ASC")` sulla collection `entries` in `WorkReport.java` (line 31)
   ```java
   @OneToMany(mappedBy = "report", cascade = CascadeType.ALL, orphanRemoval = true)
-  @OrderBy("date DESC")
+  @OrderBy("date ASC")
   private List<WorkReportEntry> entries = new ArrayList<>();
   ```
 - **Stato attuale:** nessun ordinamento a nessun livello (repository, service, frontend). Le entries vengono mostrate nell'ordine di inserimento nel DB

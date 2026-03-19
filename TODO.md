@@ -17,7 +17,7 @@
 - [ ] nella side bar aggiungere sopra alla sezione 'utente' il numero delle verisoni: versione front end, versione backend 
 
 ## Ordine Elementi
-- [ ] nella pagina 'work_details' le righe del 'work_report' devoo essere mostrate in ordine per data dalla piu recente alla piu vecchia
+- [ ] nella pagina 'work_details' le righe del 'work_report' devoo essere mostrate in ordine per data dalla piu vecchia alla piu recente
 - [ ] nella pagina 'plants' ordinare per data dal piu recente al meno recente
 
 ## Autorizzazioni
