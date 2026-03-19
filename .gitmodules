@@ -3,4 +3,4 @@
 	url = https://github.com/marcomanfrin/AtixBackEnd.git
 [submodule "AtixFrontEnd"]
 	path = AtixFrontEnd
-	url = https://github.com/marc04AM/atixfrontend.git
+	url = https://github.com/marcomanfrin/atixfrontend.git
