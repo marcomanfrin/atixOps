@@ -2,6 +2,7 @@ services:
   postgres:
     image: postgres:16-alpine
     container_name: atix-postgres
+    restart: unless-stopped
     environment:
       POSTGRES_DB: ${PG_DB_NAME:-atix_backend}
       POSTGRES_USER: ${PG_USERNAME:-postgres}
@@ -21,6 +22,7 @@ services:
   minio:
     image: minio/minio:latest
     container_name: atix-minio
+    restart: unless-stopped
     environment:
       MINIO_ROOT_USER: ${MINIO_ACCESS_KEY:-admin}
       MINIO_ROOT_PASSWORD: ${MINIO_SECRET_KEY:-adminpassword}
@@ -43,6 +45,7 @@ services:
       context: ./AtixBackEnd
       dockerfile: Dockerfile
     container_name: atix-backend
+    restart: unless-stopped
     environment:
       PG_DB_NAME: ${PG_DB_NAME:-atix_backend}
       PG_USERNAME: ${PG_USERNAME:-postgres}
@@ -81,12 +84,14 @@ services:
       args:
         VITE_API_BASE_URL: ${VITE_API_BASE_URL:-/api}
     container_name: atix-frontend
+    restart: unless-stopped
     networks:
       - atix-network
 
   nginx:
     image: nginx:alpine
     container_name: atix-nginx
+    restart: unless-stopped
     ports:
       - "80:80"
       - "443:443"
@@ -104,6 +109,7 @@ services:
   certbot:
     image: certbot/certbot
     container_name: atix-certbot
+    restart: unless-stopped
     volumes:
       - certbot-www:/var/www/certbot
       - letsencrypt:/etc/letsencrypt
