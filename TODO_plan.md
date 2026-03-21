@@ -83,11 +83,20 @@
   - Aggiungere validazione dimensione prima dell'upload
   - Mostrare il limite nella UI (es. "Max 10MB per file")
 
+### 14. Stile card lavoro e ticket nella dashboard (bianche con bordino)
+- **Riferimento visivo:** `card_style.png` nella root del repo
+- **File:** `AtixFrontEnd/src/pages/Dashboard.tsx`
+  - Lines 238-283 (card lavori recenti): cambiare `bg-muted/30 hover:bg-muted/50` → `bg-white border border-border hover:bg-muted/10`
+  - Lines 286-322 (card ticket recenti): stesso cambio di stile
+- **File (opzionale):** `AtixFrontEnd/src/index.css`
+  - Verificare che `--card` e `--border` diano il risultato desiderato (attualmente `--card: 0 0% 98%`, `--border: 0 0% 83%`)
+- **Risultato atteso:** card bianche con bordo sottile grigio chiaro, angoli arrotondati, come da screenshot di riferimento
+
 ---
 
 ## Fase 3 — Backend logic changes
 
-### 14. expectedOfficeHours / expectedPlantHours → float
+### 15. expectedOfficeHours / expectedPlantHours → float
 - **Backend:**
   - `Work.java` (lines 86-88): `int` → `double`, aggiornare getter/setter
   - `WorkRequest.java`, `WorkUpdateRequest.java`: `Integer` → `Double`
@@ -99,7 +108,7 @@
   - `validations.ts`: già `z.number()`, nessun cambio necessario
   - `CreateWorkPage.tsx` e `WorkDetailPage.tsx`: aggiungere `step="0.5"` agli input number
 
-### 15. Admin può editare WorkReport e WorkReportEntry
+### 16. Admin può editare WorkReport e WorkReportEntry
 - **File:** `AtixBackEnd/.../controllers/WorkReportsController.java`
   - POST entries (line 35): aggiungere `hasAnyRole('ADMIN', 'OWNER')` in OR con `isTechnician`
   - PATCH entries (line 43): aggiungere `hasAnyRole('ADMIN', 'OWNER')` in OR con `isTechnician`
@@ -111,7 +120,7 @@
 
 ## Fase 4 — Ricerca lavori full-text backend
 
-### 16. Ricerca lavori lato backend
+### 17. Ricerca lavori lato backend
 - **Backend:**
   - `WorkSpecification.java`: creare metodo `searchByKeyword(String keyword)` che cerca con `LIKE %keyword%` case-insensitive in: `name`, `atixClient.companyName`, `finalClient.companyName`, `plant.name`, combinati con OR
   - `WorksController.java`: aggiungere parametro `search` all'endpoint GET `/works`
@@ -122,13 +131,30 @@
 
 ---
 
+## Fase 5 — Bug fixes
+
+### 18. Bug: "Aggiungi riferimento cantiere" con ALTRO causa errore 409
+- **Sintomo:** Selezionando "ALTRO" come riferimento, il nuovo riferimento viene creato (201) ma l'associazione al lavoro fallisce con 409 "Conflitto di dati"
+- **Causa root:** Il riferimento viene creato e poi immediatamente associato al lavoro. Tuttavia, il flusso nel frontend (`WorkDetailPage.tsx` lines 502-599) prima crea il riferimento, poi chiama `add-reference`. Se il riferimento era già stato selezionato/associato in un tentativo precedente, la unique constraint `uk_work_worksite_reference` su `(work_id, worksite_reference_id)` in `WorksiteReferenceAssignment.java` (lines 9-16) viene violata → `DataIntegrityViolationException` → 409
+- **Backend:**
+  - `AtixBackEnd/.../entities/WorksiteReferenceAssignment.java` (lines 9-16): la unique constraint è su `(work_id, worksite_reference_id)` senza considerare il `role`
+  - `AtixBackEnd/.../services/WorkService.java` (lines 439-454): il check `existsByWorkAndWorksiteReference()` (line 447) verifica solo se la coppia (work, reference) esiste, ma non gestisce il caso in cui l'utente ri-seleziona lo stesso riferimento con un ruolo diverso
+  - `AtixBackEnd/.../repositories/WorksiteReferenceAssignmentRepository.java` (line 30): query di esistenza senza filtro sul ruolo
+- **Fix proposto (opzione A — preferita):** nel `WorkService.addWorksiteReference()`, se la coppia (work, reference) esiste già, aggiornare il ruolo invece di lanciare errore (upsert)
+- **Fix proposto (opzione B):** aggiungere `role` alla unique constraint: `columnNames = {"work_id", "worksite_reference_id", "role"}` — permette lo stesso riferimento con ruoli diversi sullo stesso lavoro
+- **Frontend:**
+  - `AtixFrontEnd/src/pages/WorkDetailPage.tsx` (lines 502-599): valutare se il flusso "crea + associa" debba essere atomico o se servono controlli aggiuntivi per evitare doppia associazione
+
+---
+
 ## Riepilogo
 
 | Fase | Items | Effort | Rischio |
 |------|-------|--------|---------|
 | 1 — Quick wins | #1-6 | Basso | Basso |
-| 2 — UI/UX | #7-13 | Medio | Basso |
-| 3 — Backend logic | #14-15 | Medio | Medio (migration DB) |
-| 4 — Ricerca backend | #16 | Alto | Medio |
+| 2 — UI/UX | #7-14 | Medio | Basso |
+| 3 — Backend logic | #15-16 | Medio | Medio (migration DB) |
+| 4 — Ricerca backend | #17 | Alto | Medio |
+| 5 — Bug fixes | #18 | Medio | Basso |
 
-**Totale: 16 items in 4 fasi**
+**Totale: 18 items in 5 fasi**
