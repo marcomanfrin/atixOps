@@ -4,6 +4,11 @@
 # Backup directories
 *.backup
 
+# IDE
+.idea/
+.vscode/
+
+# env 
 .env
 .env.example
 env.properties
