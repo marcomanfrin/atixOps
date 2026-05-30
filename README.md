@@ -67,6 +67,32 @@ The backend requires an `env.properties` file in `AtixBackEnd/`:
 | `JWT_SECRET` | JWT signing key (min 256 bits) |
 | `CORS_ALLOWED_ORIGINS` | Allowed CORS origins |
 
+## Backup & Restore
+
+I dati dell'app (PostgreSQL + MinIO) vengono backuppati automaticamente ogni notte alle 03:00.
+
+### Setup (una sola volta sul server)
+
+```bash
+sudo mkdir -p /backups/atixops
+sudo chown $(whoami) /backups/atixops
+./backup/install-cron.sh
+```
+
+### Comandi utili
+
+```bash
+./backup/backup.sh       # Backup manuale
+./backup/restore.sh      # Restore interattivo
+crontab -l               # Verifica cron attivo
+```
+
+### Struttura backup
+
+- `/backups/atixops/daily/` — ultimi 7 giorni
+- `/backups/atixops/weekly/` — ultime 4 domeniche
+- `/backups/atixops/logs/backup.log` — log operazioni
+
 ## API Documentation
 
 - Postman collection: `AtixBackEnd/AtixBackEnd API.postman_collection.json`

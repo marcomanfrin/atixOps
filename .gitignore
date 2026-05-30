@@ -3,6 +3,7 @@
 
 # Backup directories
 *.backup
+backup/logs/
 
 # IDE
 .idea/
