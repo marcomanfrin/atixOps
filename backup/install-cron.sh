@@ -6,7 +6,7 @@ set -euo pipefail
 # Esegui una sola volta sul server di produzione
 # =============================================================================
 
-BACKUP_ROOT="/backups/atixops"
+BACKUP_ROOT="${BACKUP_ROOT:-$HOME/backups/atixops}"
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 BACKUP_SCRIPT="$SCRIPT_DIR/backup.sh"
 CRON_SCHEDULE="0 3 * * *"  # Ogni giorno alle 03:00
@@ -42,14 +42,22 @@ fi
 # --- Installazione cron ------------------------------------------------------
 CRON_LINE="$CRON_SCHEDULE $BACKUP_SCRIPT >> $BACKUP_ROOT/logs/cron.log 2>&1"
 
-# Verifica se il cron esiste già
-if crontab -l 2>/dev/null | grep -qF "$BACKUP_SCRIPT"; then
+# Crontab esistente (vuota se non presente). Il '|| true' evita che set -e
+# aborti quando l'utente non ha ancora una crontab.
+EXISTING_CRON="$(crontab -l 2>/dev/null || true)"
+
+if printf '%s\n' "$EXISTING_CRON" | grep -qF "$BACKUP_SCRIPT"; then
     echo "Cron job già presente. Aggiornamento..."
-    crontab -l 2>/dev/null | grep -vF "$BACKUP_SCRIPT" | { cat; echo "$CRON_LINE"; } | crontab -
 else
     echo "Installazione cron job..."
-    (crontab -l 2>/dev/null; echo "$CRON_LINE") | crontab -
 fi
+
+# Ricostruisce la crontab: righe esistenti (tolte quelle del nostro backup)
+# più la riga aggiornata, eliminando le righe vuote.
+{
+    printf '%s\n' "$EXISTING_CRON" | grep -vF "$BACKUP_SCRIPT" || true
+    echo "$CRON_LINE"
+} | grep -vE '^[[:space:]]*$' | crontab -
 
 # --- Verifica -----------------------------------------------------------------
 echo ""

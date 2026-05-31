@@ -7,18 +7,35 @@ set -euo pipefail
 # =============================================================================
 
 # --- Configurazione -----------------------------------------------------------
-BACKUP_ROOT="/backups/atixops"
+BACKUP_ROOT="${BACKUP_ROOT:-$HOME/backups/atixops}"
 DAILY_DIR="$BACKUP_ROOT/daily"
 WEEKLY_DIR="$BACKUP_ROOT/weekly"
 LOG_DIR="$BACKUP_ROOT/logs"
 LOG_FILE="$LOG_DIR/backup.log"
 
-# Container e credenziali (match docker-compose.yml defaults)
+# Container e credenziali
 PG_CONTAINER="atix-postgres"
-PG_USER="${PG_USERNAME:-postgres}"
-PG_DB="${PG_DB_NAME:-atix_backend}"
 
-MINIO_VOLUME="minio_data"
+# Carica PG_USERNAME / PG_DB_NAME dal .env del repo se non già presenti
+# nell'ambiente. Necessario sotto cron, dove l'ambiente è minimale e le
+# variabili esportate dalla shell interattiva non sono disponibili.
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ENV_FILE="$SCRIPT_DIR/../.env"
+read_env() {
+    # read_env VARNAME DEFAULT
+    local key="$1" def="$2" val=""
+    if [[ -f "$ENV_FILE" ]]; then
+        val="$(grep -E "^${key}=" "$ENV_FILE" | head -n1 | cut -d= -f2-)"
+        val="${val%$'\r'}"            # rimuove eventuale CR (file CRLF)
+        val="${val%\"}"; val="${val#\"}"  # rimuove apici doppi di contorno
+    fi
+    echo "${val:-$def}"
+}
+PG_USER="${PG_USERNAME:-$(read_env PG_USERNAME postgres)}"
+PG_DB="${PG_DB_NAME:-$(read_env PG_DB_NAME atix_backend)}"
+
+# Volume Docker MinIO (prefisso del progetto docker-compose: atixops_)
+MINIO_VOLUME="atixops_minio_data"
 
 # Retention
 DAILY_RETENTION_DAYS=7
