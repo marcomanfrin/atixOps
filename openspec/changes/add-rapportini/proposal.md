@@ -7,13 +7,13 @@ A standalone HTML prototype (`prototypes/index.html`) already validated the desi
 ## What Changes
 
 - **New `Rapportino` domain object**: one signed service report per *intervention*, with `Work` as its mandatory parent (`1:N`). It is not an extension of `WorkReport`, which stays a `1:1` mutable hours ledger per work order.
-- **Report content**: intervention type flags (maintenance / call-out / quote / warranty), description, activity checklist answers, materials used (description + quantity), ordinary and overtime hours, travel km, meal and parking flags, work progress state.
+- **Report content**: intervention type flags (maintenance / call-out / quote / warranty), description, activity checklist answers, materials used (description + quantity), work hours and travel hours, travel km, meal and parking flags, work progress state.
 - **Immutable snapshot**: client name, client reference, plant label and order number are copied onto the rapportino so a later rename of a client or plant cannot alter an already-signed document.
 - **Lifecycle with signature**: `DRAFT → AWAITING_SIGNATURE → SIGNED → VOID`. A rapportino is freely editable while `DRAFT` and frozen once `SIGNED`; corrections are made by voiding and re-issuing.
 - **Two signature paths**: on-site signature on a canvas on the technician's device, and remote signature via a single-use expiring link opened by the customer on their own device.
 - **New unauthenticated surface**: `/api/public/rapportini/sign/{token}` (backend) and `/sign/:token` (frontend) for the remote signature flow. This is the first non-auth surface beyond `/auth/**` and `/health`.
 - **Server-side PDF generation** on signature, stored via the existing polymorphic attachment system as `AttachmentTargetType.REPORT`, and served through an authenticated endpoint rather than a raw object-storage URL.
-- **Hours projection**: signing a rapportino emits a read-only `WorkReportEntry` (ordinary + overtime hours) on the work's `WorkReport`, keeping `WorkReport.totalHours` the single source of truth for work-order hours. Travel km, meal and parking stay on the rapportino only.
+- **Hours projection**: signing a rapportino emits a read-only `WorkReportEntry` (work + travel hours) on the work's `WorkReport`, keeping `WorkReport.totalHours` the single source of truth for work-order hours. Travel km, meal and parking stay on the rapportino only.
 - **Editable checklist template**: activity items live in a seeded database table, and each answer stores a snapshot of its label so historical reports stay faithful when the template changes.
 - **New frontend surfaces**: `/reports` list, `/reports/:id` detail, a 4-step mobile-first wizard, a reusable `SignaturePad` canvas component, a rapportini card inside `WorkDetailPage`, and a `Rapportini` entry in the sidebar.
 - Not a breaking change: all database work is additive (new tables plus one nullable column), and no existing endpoint changes shape.

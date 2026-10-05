@@ -21,7 +21,7 @@ The system SHALL render a PDF of the rapportino on the server as part of the sig
 
 ### Requirement: Document content
 
-The generated PDF SHALL contain the report number, intervention date, snapshotted client name, client reference, plant label and order number, intervention type flags, the description, all checklist answers with their snapshotted labels, all materials with quantities, ordinary hours, overtime hours, travel kilometres, meal and parking flags, work progress state, technician name, signer name, the signature image and the signature timestamp.
+The generated PDF SHALL contain the report number, intervention date, snapshotted client name, client reference, plant label and order number, intervention type flags, the description, all checklist answers with their snapshotted labels, all materials with quantities, work hours, travel hours, travel kilometres, meal and parking flags, work progress state, technician name, signer name, the signature image and the signature timestamp.
 
 #### Scenario: Complete rapportino rendered
 

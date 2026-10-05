@@ -21,12 +21,17 @@ A rapportino SHALL always reference exactly one existing `Work`. A `Work` SHALL 
 
 ### Requirement: Client and plant data are snapshotted
 
-At creation the system SHALL copy the client name, client reference, plant label and order number from the work order onto the rapportino. Rendering of a rapportino SHALL use these snapshot values rather than resolving the related entities.
+At creation the system SHALL copy the client name, client reference, plant label and order number from the work order onto the rapportino. Rendering of a rapportino SHALL use these snapshot values rather than resolving the related entities. Client, plant and worksite reference SHALL be chosen among the entities that exist in the application, prefilled from the work order and changeable only while the rapportino is `DRAFT`; the snapshot SHALL follow the chosen entities until signature.
 
 #### Scenario: Prefill from the work order
 
 - **WHEN** a rapportino is created for a work order
 - **THEN** client name, client reference, plant label and order number are populated from that work order and stored on the rapportino
+
+#### Scenario: Choose a different client while drafting
+
+- **WHEN** a technician selects another existing client on a `DRAFT` rapportino
+- **THEN** the rapportino references that client and its snapshot client name is updated accordingly
 
 #### Scenario: Related entity renamed after signature
 
@@ -49,7 +54,7 @@ Every rapportino SHALL receive a unique report number of the form `RFL-{year}-{s
 
 ### Requirement: Intervention content
 
-A rapportino SHALL record intervention date, technician, intervention type flags (maintenance, call-out, quote/order, warranty), a free-text description, ordinary hours, overtime hours, travel kilometres, meal and parking flags, and a work progress state of `IN_PROGRESS` or `COMPLETED`. Hours and kilometres SHALL NOT be negative.
+A rapportino SHALL record intervention date, technician, intervention type flags (maintenance, call-out, quote/order, warranty), a free-text description, work hours, travel hours, travel kilometres, meal and parking flags, and a work progress state of `IN_PROGRESS` or `COMPLETED`. Hours and kilometres SHALL NOT be negative.
 
 #### Scenario: Save intervention data
 
@@ -58,7 +63,7 @@ A rapportino SHALL record intervention date, technician, intervention type flags
 
 #### Scenario: Negative hours rejected
 
-- **WHEN** a draft rapportino is saved with negative ordinary hours
+- **WHEN** a draft rapportino is saved with negative work hours
 - **THEN** the system rejects the request with a validation error and persists nothing
 
 ### Requirement: Activity checklist
@@ -143,11 +148,11 @@ An administrator SHALL be able to void a signed rapportino, recording who voided
 
 ### Requirement: Signed hours flow into the work report
 
-On transition to `SIGNED`, the system SHALL append one entry to the work order's `WorkReport`, creating that report if absent, with hours equal to ordinary plus overtime hours, the intervention description, the intervention date and the technician as author. The entry SHALL reference its originating rapportino. Travel kilometres, meal and parking SHALL NOT be projected.
+On transition to `SIGNED`, the system SHALL append one entry to the work order's `WorkReport`, creating that report if absent, with hours equal to work hours plus travel hours, the intervention description, the intervention date and the technician as author. The entry SHALL reference its originating rapportino. Travel kilometres, meal and parking SHALL NOT be projected.
 
 #### Scenario: Entry created on signature
 
-- **WHEN** a rapportino with 4 ordinary and 2 overtime hours is signed
+- **WHEN** a rapportino with 4 work hours and 2 travel hours is signed
 - **THEN** a work report entry of 6 hours referencing that rapportino exists on the work order and the report total hours increase by 6
 
 #### Scenario: Work report absent
