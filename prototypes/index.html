@@ -1,0 +1,1777 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Rapporto di Lavoro – ATIX</title>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+<!-- ═══════════════════════════════════════════════════════
+     FIREBASE CONFIG  ←  sostituire con i propri valori
+     ═══════════════════════════════════════════════════════ -->
+<script type="module">
+  import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+  import { getFirestore, doc, setDoc, getDoc, updateDoc, serverTimestamp }
+    from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+  // ▼ INSERIRE QUI I DATI DEL PROPRIO PROGETTO FIREBASE ▼
+  const firebaseConfig = {
+    apiKey:            "AIzaSyBzsAwl_19ClT9nvy7no6nSS1Rbghejtec",
+    authDomain:        "atix-rapporti.firebaseapp.com",
+    projectId:         "atix-rapporti",
+    storageBucket:     "atix-rapporti.firebasestorage.app",
+    messagingSenderId: "224308827712",
+    appId:             "1:224308827712:web:1a60fd201ff354ca8c71a5"
+  };
+
+  const app = initializeApp(firebaseConfig);
+  const db  = getFirestore(app);
+
+  // Esporre globalmente per l'uso nel codice non-module
+  window._db        = db;
+  window._fbDoc     = doc;
+  window._fbSetDoc  = setDoc;
+  window._fbGetDoc  = getDoc;
+  window._fbUpdateDoc = updateDoc;
+  window._fbServerTimestamp = serverTimestamp;
+  window._firebaseReady = true;
+  document.dispatchEvent(new Event("firebaseReady"));
+</script>
+
+<style>
+:root {
+  --blue:      #3D7EBF;
+  --blue-mid:  #2B4A73;
+  --orange:    #E8600A;
+  --orange-lt: #FFF0E8;
+  --grey-bg:   #F5F7FA;
+  --grey-line: #DDE2EA;
+  --grey-text: #6B7785;
+  --white:     #FFFFFF;
+  --green:     #1A7A4A;
+  --red:       #C0392B;
+
+  --radius: 12px;
+  --shadow: 0 2px 12px rgba(26,46,74,.10);
+  --font: 'Inter', system-ui, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font);
+  background: var(--grey-bg);
+  color: var(--blue);
+  min-height: 100dvh;
+  font-size: 15px;
+}
+
+/* ── HEADER ── */
+.app-header {
+  background: var(--blue);
+  color: var(--white);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  position: sticky;
+  top: 0;
+  z-index: 100;
+  box-shadow: 0 2px 8px rgba(0,0,0,.25);
+}
+.app-header .logo {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: var(--orange);
+}
+.app-header .title {
+  font-size: 13px;
+  font-weight: 500;
+  opacity: .75;
+  flex: 1;
+}
+
+/* ── STATUS TIMELINE ── */
+.status-bar {
+  background: var(--white);
+  padding: 14px 20px;
+  display: flex;
+  align-items: center;
+  gap: 0;
+  border-bottom: 1px solid var(--grey-line);
+  overflow-x: auto;
+}
+.status-step {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  position: relative;
+}
+.status-step::after {
+  content: '';
+  position: absolute;
+  top: 12px;
+  left: 50%;
+  width: 100%;
+  height: 2px;
+  background: var(--grey-line);
+  z-index: 0;
+}
+.status-step:last-child::after { display: none; }
+.step-dot {
+  width: 24px; height: 24px;
+  border-radius: 50%;
+  background: var(--grey-line);
+  border: 2px solid var(--grey-line);
+  z-index: 1;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--grey-text);
+  transition: all .3s;
+}
+.status-step.active .step-dot {
+  background: var(--orange);
+  border-color: var(--orange);
+  color: var(--white);
+}
+.status-step.done .step-dot {
+  background: var(--green);
+  border-color: var(--green);
+  color: var(--white);
+}
+.status-step.active::after,
+.status-step.done::after {
+  background: var(--orange);
+}
+.step-label {
+  font-size: 10px;
+  font-weight: 500;
+  color: var(--grey-text);
+  white-space: nowrap;
+}
+.status-step.active .step-label { color: var(--orange); font-weight: 600; }
+.status-step.done .step-label  { color: var(--green);  font-weight: 600; }
+
+/* ── MAIN ── */
+main { padding: 20px 16px 100px; max-width: 680px; margin: 0 auto; }
+
+/* ── CARD ── */
+.card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 20px;
+  margin-bottom: 16px;
+}
+.card-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: .05em;
+  text-transform: uppercase;
+  color: var(--orange);
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.card-title svg { width: 16px; height: 16px; flex-shrink: 0; }
+
+/* ── FORM ── */
+label {
+  display: block;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--grey-text);
+  margin-bottom: 5px;
+  margin-top: 14px;
+}
+label:first-child { margin-top: 0; }
+
+input[type="text"],
+input[type="number"],
+input[type="date"],
+input[type="time"],
+select,
+textarea {
+  width: 100%;
+  padding: 11px 14px;
+  border: 1.5px solid var(--grey-line);
+  border-radius: 8px;
+  font-family: var(--font);
+  font-size: 15px;
+  color: var(--blue);
+  background: var(--white);
+  transition: border-color .2s;
+  -webkit-appearance: none;
+}
+input:focus, select:focus, textarea:focus {
+  outline: none;
+  border-color: var(--orange);
+}
+textarea { resize: vertical; min-height: 90px; }
+
+.row2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.row3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+
+/* ── MATERIALI ── */
+.materiali-list { display: flex; flex-direction: column; gap: 8px; margin-bottom: 10px; }
+.materiale-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 8px;
+  align-items: center;
+}
+.materiale-row input { margin: 0; }
+.qty-input { width: 70px !important; text-align: center; }
+.btn-icon {
+  width: 36px; height: 36px;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 18px;
+  background: #FEE8E8;
+  color: var(--red);
+  flex-shrink: 0;
+}
+
+/* ── CHECKLIST ── */
+.checklist { display: flex; flex-direction: column; gap: 10px; }
+.check-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  border: 1.5px solid var(--grey-line);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: border-color .2s, background .2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.check-item:has(input:checked) {
+  border-color: var(--green);
+  background: #F0FBF5;
+}
+.check-item input[type="checkbox"] {
+  width: 20px; height: 20px;
+  accent-color: var(--green);
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.check-item input[type="checkbox"] { border: none; padding: 0; }
+.check-label { font-size: 14px; font-weight: 500; flex: 1; }
+.check-note {
+  font-size: 12px;
+  color: var(--grey-text);
+  width: 100%;
+  padding-left: 32px;
+  margin-top: -4px;
+  display: none;
+}
+.check-item:has(input:checked) + .check-note { display: block; }
+
+/* ── ORE ── */
+.ore-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+.ore-box {
+  background: var(--grey-bg);
+  border-radius: 10px;
+  padding: 14px;
+  text-align: center;
+}
+.ore-box .ore-label { font-size: 12px; color: var(--grey-text); font-weight: 500; margin-bottom: 6px; }
+.ore-box input { background: var(--white); text-align: center; }
+
+/* ── FIRMA CANVAS ── */
+.firma-wrap {
+  border: 2px dashed var(--grey-line);
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  background: #FAFBFD;
+  touch-action: none;
+}
+.firma-wrap canvas { display: block; width: 100%; cursor: crosshair; }
+.firma-hint {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 13px;
+  color: var(--grey-line);
+  pointer-events: none;
+  transition: opacity .3s;
+}
+.firma-wrap.has-firma .firma-hint { opacity: 0; }
+.btn-clear-firma {
+  position: absolute;
+  top: 8px; right: 8px;
+  background: rgba(255,255,255,.9);
+  border: 1px solid var(--grey-line);
+  border-radius: 6px;
+  font-size: 12px;
+  padding: 4px 10px;
+  cursor: pointer;
+  color: var(--grey-text);
+  font-family: var(--font);
+}
+
+/* ── BOTTONI ── */
+.btn {
+  display: block;
+  width: 100%;
+  padding: 15px;
+  border: none;
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  text-align: center;
+  transition: opacity .2s, transform .1s;
+  -webkit-tap-highlight-color: transparent;
+}
+.btn:active { transform: scale(.98); opacity: .85; }
+.btn-primary  { background: var(--orange); color: var(--white); }
+.btn-secondary { background: var(--blue); color: var(--white); }
+.btn-outline {
+  background: transparent;
+  color: var(--blue-mid);
+  border: 2px solid var(--blue-mid);
+}
+.btn-success { background: var(--green); color: var(--white); }
+.btn + .btn { margin-top: 10px; }
+
+/* ── CRONOLOGIA ── */
+.rap-card {
+  background: var(--white);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  padding: 16px;
+  margin-bottom: 12px;
+  border-left: 4px solid var(--grey-line);
+}
+.rap-card.firmato  { border-left-color: var(--green); }
+.rap-card.attesa   { border-left-color: var(--orange); }
+.rap-card-header   { display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px; }
+.rap-card-id       { font-size:12px; font-family:monospace; color:var(--grey-text); }
+.rap-card-stato    { font-size:11px; font-weight:700; padding:3px 8px; border-radius:20px; }
+.rap-card-stato.firmato { background:#e8f7ef; color:var(--green); }
+.rap-card-stato.attesa  { background:var(--orange-lt); color:var(--orange); }
+.rap-card-cliente  { font-size:15px; font-weight:600; color:var(--blue); margin-bottom:2px; }
+.rap-card-info     { font-size:13px; color:var(--grey-text); margin-bottom:12px; }
+.rap-card-actions  { display:flex; gap:8px; flex-wrap:wrap; }
+.rap-btn { padding:7px 14px; border-radius:8px; font-size:13px; font-weight:600; cursor:pointer; font-family:var(--font); border:none; }
+.rap-btn-dl  { background:var(--blue); color:#fff; }
+.rap-btn-edit { background:var(--orange-lt); color:var(--orange); border:1px solid #FBBF8A; }
+
+/* ── TOAST ── */
+#toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(80px);
+  background: var(--blue);
+  color: var(--white);
+  padding: 12px 22px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 4px 20px rgba(0,0,0,.3);
+  z-index: 999;
+  transition: transform .35s cubic-bezier(.34,1.56,.64,1);
+  white-space: nowrap;
+  pointer-events: none;
+}
+#toast.show { transform: translateX(-50%) translateY(0); }
+#toast.success { background: var(--green); }
+#toast.error   { background: var(--red); }
+
+/* ── LINK INVIO REMOTO ── */
+.link-box {
+  background: var(--orange-lt);
+  border: 1.5px solid #FBBF8A;
+  border-radius: 10px;
+  padding: 14px;
+  display: none;
+}
+.link-box.visible { display: block; }
+.link-box .link-url {
+  font-size: 13px;
+  word-break: break-all;
+  color: var(--blue-mid);
+  background: var(--white);
+  padding: 10px;
+  border-radius: 6px;
+  margin: 8px 0;
+  font-family: monospace;
+}
+.link-meta { font-size: 12px; color: var(--grey-text); }
+
+/* ── SCHERMATA FIRMA REMOTA ── */
+#remote-sign-screen {
+  display: none;
+  padding: 20px 16px 40px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+#remote-sign-screen.active { display: block; }
+
+/* ── MODAL OVERLAY ── */
+.modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(10,20,40,.6);
+  z-index: 200;
+  align-items: flex-end;
+  justify-content: center;
+}
+.modal.open { display: flex; }
+.modal-box {
+  background: var(--white);
+  border-radius: 20px 20px 0 0;
+  padding: 24px 20px 40px;
+  width: 100%;
+  max-width: 640px;
+  animation: slideUp .3s ease;
+}
+@keyframes slideUp {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
+}
+.modal-title { font-size: 18px; font-weight: 700; margin-bottom: 16px; }
+
+/* Responsive */
+@media (max-width: 380px) {
+  .row3 { grid-template-columns: 1fr 1fr; }
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════════════════════
+     HEADER
+══════════════════════════════════════════════════════ -->
+
+<!-- ══════════════════════════════════════════════════════
+     SCHERMATA LOGIN
+══════════════════════════════════════════════════════ -->
+<div id="loginScreen" style="min-height:100dvh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:24px;background:var(--grey-bg)">
+  <div style="width:100%;max-width:360px">
+    <div style="text-align:center;margin-bottom:32px">
+      <div style="font-size:36px;font-weight:700;color:var(--orange);letter-spacing:-1px">ATIX</div>
+      <div style="font-size:14px;color:var(--grey-text);margin-top:4px">Rapporto di Lavoro</div>
+    </div>
+    <div class="card" style="padding:28px">
+      <div class="card-title" style="justify-content:center;margin-bottom:20px">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:18px;height:18px"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Accesso Tecnico
+      </div>
+      <label>Seleziona tecnico</label>
+      <select id="loginNome" style="margin-bottom:16px">
+        <option value="">— Seleziona —</option>
+      </select>
+      <label>PIN</label>
+      <input type="password" id="loginPin" placeholder="••••" maxlength="8"
+        style="text-align:center;font-size:24px;letter-spacing:8px;margin-bottom:20px"
+        onkeydown="if(event.key==='Enter') doLogin()">
+      <button class="btn btn-primary" onclick="doLogin()">Accedi →</button>
+      <div id="loginError" style="color:var(--red);font-size:13px;text-align:center;margin-top:12px;display:none">
+        PIN non corretto. Riprova.
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="appWrapper" style="display:none">
+<header class="app-header">
+  <span class="logo">ATIX</span>
+  <span class="title">Rapporto di Lavoro</span>
+  <span id="headerTecnico" style="font-size:12px;color:rgba(255,255,255,.75);font-weight:500"></span>
+  <button onclick="vaiCronologia()" style="background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.3);color:#fff;padding:6px 12px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--font)">📋 Archivio</button>
+  <button onclick="logout()" style="background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.2);color:rgba(255,255,255,.75);padding:6px 10px;border-radius:8px;font-size:12px;cursor:pointer;font-family:var(--font)">↩ Esci</button>
+</header>
+
+<!-- ══════════════════════════════════════════════════════
+     STATUS BAR
+══════════════════════════════════════════════════════ -->
+<div class="status-bar" id="statusBar">
+  <div class="status-step active" data-step="1">
+    <div class="step-dot">1</div>
+    <span class="step-label">Dati</span>
+  </div>
+  <div class="status-step" data-step="2">
+    <div class="step-dot">2</div>
+    <span class="step-label">Lavori</span>
+  </div>
+  <div class="status-step" data-step="3">
+    <div class="step-dot">3</div>
+    <span class="step-label">Firma</span>
+  </div>
+  <div class="status-step" data-step="4">
+    <div class="step-dot">4</div>
+    <span class="step-label">Inviato</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     FORM PRINCIPALE (tecnico)
+══════════════════════════════════════════════════════ -->
+<main id="mainForm">
+
+  <!-- STEP 1 – DATI -->
+  <section id="step1">
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+        Cliente
+      </div>
+      <label>Ragione sociale</label>
+      <input type="text" id="clienteNome" placeholder="Es. Provincia Autonoma di Bolzano">
+      <label>Referente</label>
+      <input type="text" id="clienteRef" placeholder="Nome e cognome">
+      <label>Impianto / Sede</label>
+      <input type="text" id="impianto" placeholder="Es. Palazzo di Giustizia – Piano 3">
+      <label>Ordine N°</label>
+      <input type="text" id="ordineN" placeholder="Es. ORD-2025-0042">
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+        Intervento
+      </div>
+      <div class="row2">
+        <div>
+          <label>Data</label>
+          <input type="date" id="dataIntervento">
+        </div>
+        <div>
+          <label>N° Rapporto</label>
+          <input type="text" id="nRapporto" placeholder="Auto">
+        </div>
+      </div>
+      <label>Tipo intervento</label>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">
+        <label class="check-item" style="margin-top:0">
+          <input type="checkbox" id="tipoManutenzione">
+          <span class="check-label">Manutenzione da contratto</span>
+        </label>
+        <label class="check-item">
+          <input type="checkbox" id="tipoChiamata">
+          <span class="check-label">Intervento su chiamata</span>
+        </label>
+        <label class="check-item">
+          <input type="checkbox" id="tipoOfferta">
+          <span class="check-label">Intervento su offerta / ordine</span>
+        </label>
+        <label class="check-item">
+          <input type="checkbox" id="tipoGaranzia">
+          <span class="check-label">Intervento in garanzia</span>
+        </label>
+      </div>
+      <label>Tecnico</label>
+      <input type="text" id="tecnico" placeholder="Nome e cognome tecnico">
+    </div>
+
+    <button class="btn btn-primary" onclick="goStep(2)">Avanti →</button>
+  </section>
+
+  <!-- STEP 2 – LAVORI -->
+  <section id="step2" style="display:none">
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+        Check-list attività
+      </div>
+      <div class="checklist" id="checklist">
+        <!-- Generato da JS -->
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Descrizione intervento
+      </div>
+      <textarea id="descrizione" placeholder="Descrivi le attività svolte, anomalie riscontrate, soluzioni adottate…"></textarea>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/></svg>
+        Materiali / Ricambi
+      </div>
+      <div class="materiali-list" id="materialiList"></div>
+      <button class="btn btn-outline" onclick="addMateriale()">+ Aggiungi materiale</button>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Ore di lavoro
+      </div>
+      <div class="ore-grid">
+        <div class="ore-box">
+          <div class="ore-label">Ore lavoro</div>
+          <input type="number" id="oreOrd" min="0" step="0.5" value="0">
+        </div>
+        <div class="ore-box">
+          <div class="ore-label">Ore viaggio</div>
+          <input type="number" id="oreStr" min="0" step="0.5" value="0">
+        </div>
+        <div class="ore-box">
+          <div class="ore-label">Km trasferta</div>
+          <input type="number" id="kmTras" min="0" step="1" value="0">
+        </div>
+        <div class="ore-box" style="display:flex;flex-direction:column;gap:10px;justify-content:center">
+          <label class="check-item" style="margin-top:0;padding:10px 12px">
+            <input type="checkbox" id="chkPasto">
+            <span class="check-label">Pasto</span>
+          </label>
+          <label class="check-item" style="margin-top:0;padding:10px 12px">
+            <input type="checkbox" id="chkParcheggio">
+            <span class="check-label">Parcheggio</span>
+          </label>
+        </div>
+
+      </div>
+      <label style="margin-top:16px">Stato lavoro</label>
+      <div style="display:flex;gap:10px;margin-top:4px">
+        <label class="check-item" style="margin-top:0;flex:1;padding:12px 14px">
+          <input type="radio" name="statoLavoro" id="statoConcluso" value="Conclusione Lavori" checked style="width:18px;height:18px;accent-color:var(--green);flex-shrink:0">
+          <span class="check-label">Conclusione Lavori</span>
+        </label>
+        <label class="check-item" style="margin-top:0;flex:1;padding:12px 14px">
+          <input type="radio" name="statoLavoro" id="statoAvanzamento" value="Stato Avanzamento" style="width:18px;height:18px;accent-color:var(--orange);flex-shrink:0">
+          <span class="check-label">Stato Avanzamento</span>
+        </label>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="goStep(1)">← Indietro</button>
+    <button class="btn btn-primary" onclick="goStep(3)">Avanti →</button>
+  </section>
+
+  <!-- STEP 3 – FIRMA -->
+  <section id="step3" style="display:none">
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>
+        Firma in presenza
+      </div>
+      <p style="font-size:13px;color:var(--grey-text);margin-bottom:14px;">
+        Mostrare il telefono al cliente e far firmare nell'area sottostante.
+      </p>
+      <div class="firma-wrap" id="firmaWrap">
+        <canvas id="firmaCanvas" height="180"></canvas>
+        <div class="firma-hint">✍️ Firma qui</div>
+        <button class="btn-clear-firma" onclick="clearFirma()">Cancella</button>
+      </div>
+      <label style="margin-top:14px;">Nome del firmatario</label>
+      <input type="text" id="firmatario" placeholder="Nome e cognome cliente">
+      <div style="background:#F5F7FA;border:1px solid var(--grey-line);border-radius:8px;padding:14px;font-size:12px;color:var(--grey-text);line-height:1.7;margin-top:14px">
+        <strong style="font-size:12px;color:var(--blue);display:block;margin-bottom:6px">Informativa sul trattamento dei dati (art. 13 GDPR)</strong>
+        Firmando il presente rapporto di intervento, il sottoscritto dichiara di aver preso visione delle attività eseguite e di approvarne il contenuto.<br><br>
+        I dati personali (nome, firma grafometrica) sono raccolti da <strong>ATIX S.r.l.</strong> esclusivamente per la gestione documentale degli interventi tecnici, ai sensi dell'art. 6.1(b) del Regolamento UE 2016/679 (GDPR). I dati non saranno ceduti a terzi né utilizzati per finalità diverse da quella indicata. Il documento firmato sarà conservato in forma digitale per il periodo previsto dagli obblighi di legge.<br><br>
+        Per esercitare i diritti di accesso, rettifica o cancellazione dei propri dati contattare: <strong>info@atix.it</strong>
+        <div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px">
+          <input type="checkbox" id="accettoDisclaimerLocale" style="width:18px;height:18px;margin-top:2px;flex-shrink:0;accent-color:var(--green)">
+          <label for="accettoDisclaimerLocale" style="font-size:13px;color:var(--blue);font-weight:500;cursor:pointer">Ho letto l'informativa e acconsento al trattamento dei miei dati personali</label>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg>
+        Firma remota (link WhatsApp / email)
+      </div>
+      <p style="font-size:13px;color:var(--grey-text);margin-bottom:14px;">
+        Genera un link da inviare al cliente. Scade dopo l'ora selezionata.
+      </p>
+      <label>Scadenza link</label>
+      <select id="scadenzaLink">
+        <option value="30">30 minuti</option>
+        <option value="60" selected>1 ora</option>
+        <option value="120">2 ore</option>
+        <option value="1440">24 ore</option>
+      </select>
+      <button class="btn btn-outline" style="margin-top:12px" onclick="generaLink()">🔗 Genera link firma remota</button>
+      <div class="link-box" id="linkBox">
+        <strong style="font-size:13px;">Link generato:</strong>
+        <div class="link-url" id="linkUrl"></div>
+        <div class="link-meta" id="linkMeta"></div>
+        <button class="btn btn-primary" style="margin-top:10px;padding:11px" onclick="condividiLink()">📤 Condividi (WhatsApp / email)</button>
+      </div>
+    </div>
+
+    <button class="btn btn-secondary" onclick="goStep(2)">← Indietro</button>
+    <button class="btn btn-success" onclick="completaRapporto()">✔ Salva e invia rapporto</button>
+  </section>
+
+  <!-- STEP 4 – COMPLETATO -->
+  <section id="step4" style="display:none">
+    <div class="card" style="text-align:center;padding:36px 20px">
+      <div style="font-size:56px;margin-bottom:16px">✅</div>
+      <h2 style="font-size:20px;font-weight:700;margin-bottom:8px">Rapporto inviato</h2>
+      <p style="color:var(--grey-text);font-size:14px;margin-bottom:20px">
+        Il PDF è stato salvato su Google Drive.<br>
+        <span id="riepilogoId" style="font-family:monospace;font-size:12px"></span>
+      </p>
+      <button class="btn btn-primary" onclick="nuovoRapporto()">+ Nuovo rapporto</button>
+      <button class="btn btn-outline" style="margin-top:10px" onclick="scaricaPDF()">⬇ Scarica PDF locale</button>
+      <button class="btn btn-outline" style="margin-top:10px" onclick="vaiCronologia()">📋 Cronologia rapporti</button>
+    </div>
+  </section>
+
+</main>
+
+<!-- ══════════════════════════════════════════════════════
+     CRONOLOGIA RAPPORTI (sotto il form principale)
+══════════════════════════════════════════════════════ -->
+<div id="cronologiaSection" style="display:none;max-width:680px;margin:0 auto;padding:0 16px 40px">
+  <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:8px">
+    <button class="btn btn-secondary" style="width:auto;padding:8px 16px;font-size:13px;flex-shrink:0" onclick="tornaAlForm()">← Nuovo rapporto</button>
+    <h2 style="font-size:16px;font-weight:700;color:var(--blue);margin:0">Archivio</h2>
+    <button class="btn btn-outline" style="width:auto;padding:8px 16px;font-size:13px;flex-shrink:0" onclick="caricaCronologia()">↻ Aggiorna</button>
+  </div>
+  <div id="cronologiaList"></div>
+</div>
+
+<!-- ══════════════════════════════════════════════════════
+     SCHERMATA FIRMA REMOTA (cliente apre il link)
+══════════════════════════════════════════════════════ -->
+<div id="remote-sign-screen">
+  <div style="text-align:center;padding:30px 0 20px">
+    <div class="logo" style="font-size:28px;color:var(--orange)">ATIX</div>
+    <div style="font-size:14px;color:var(--grey-text);margin-top:4px">Richiesta di firma</div>
+  </div>
+
+  <div class="card" id="remoteRapportoPreview">
+    <div class="card-title">Riepilogo intervento</div>
+    <div id="remotePreviewContent" style="font-size:14px;line-height:1.8"></div>
+  </div>
+
+  <div class="card">
+    <div class="card-title">La sua firma</div>
+    <p style="font-size:13px;color:var(--grey-text);margin-bottom:14px">Firmi nell'area sottostante per confermare il lavoro eseguito.</p>
+    <div class="firma-wrap" id="remoteFirmaWrap">
+      <canvas id="remoteFirmaCanvas" height="200"></canvas>
+      <div class="firma-hint">✍️ Firma qui</div>
+      <button class="btn-clear-firma" onclick="clearRemoteFirma()">Cancella</button>
+    </div>
+    <label style="margin-top:14px;">Nome e cognome</label>
+    <input type="text" id="remoteFirmatario" placeholder="Nome e cognome">
+  </div>
+
+  <div id="remoteExpired" class="card" style="display:none;text-align:center;padding:30px;border:2px solid var(--red)">
+    <div style="font-size:40px">⏱</div>
+    <h3 style="margin:12px 0 8px;color:var(--red)">Link scaduto</h3>
+    <p style="font-size:13px;color:var(--grey-text)">Contattare il tecnico per ricevere un nuovo link.</p>
+  </div>
+
+  <div id="disclaimerBox" class="card" style="background:#F5F7FA;border:1px solid var(--grey-line);padding:14px 16px;font-size:12px;color:var(--grey-text);line-height:1.7">
+    <strong style="font-size:12px;color:var(--blue);display:block;margin-bottom:6px">Informativa sul trattamento dei dati (art. 13 GDPR)</strong>
+    Firmando il presente rapporto di intervento, il sottoscritto dichiara di aver preso visione delle attività eseguite e di approvarne il contenuto.<br><br>
+    I dati personali (nome, firma grafometrica) sono raccolti da <strong>ATIX S.r.l.</strong> esclusivamente per la gestione documentale degli interventi tecnici, ai sensi dell'art. 6.1(b) del Regolamento UE 2016/679 (GDPR). I dati non saranno ceduti a terzi né utilizzati per finalità diverse da quella indicata. Il documento firmato sarà conservato in forma digitale per il periodo previsto dagli obblighi di legge.<br><br>
+    Per esercitare i diritti di accesso, rettifica o cancellazione dei propri dati contattare: <strong>info@atix.it</strong>
+    <div style="margin-top:10px;display:flex;align-items:flex-start;gap:8px">
+      <input type="checkbox" id="accettoDisclaimer" style="width:18px;height:18px;margin-top:2px;flex-shrink:0;accent-color:var(--green)">
+      <label for="accettoDisclaimer" style="font-size:13px;color:var(--blue);font-weight:500;cursor:pointer">Ho letto l'informativa e acconsento al trattamento dei miei dati personali</label>
+    </div>
+  </div>
+
+  <button class="btn btn-success" id="btnFirmaRemota" onclick="inviaFirmaRemota()">✔ Conferma e firma</button>
+
+  <div id="remoteSuccess" class="card" style="display:none;text-align:center;padding:30px;margin-top:16px">
+    <h3 style="margin:0 0 8px">Grazie!</h3>
+    <p style="font-size:14px;color:var(--grey-text)">La firma è stata acquisita correttamente.</p>
+  </div>
+</div>
+
+<!-- TOAST -->
+<div id="toast"></div>
+
+<!-- ══════════════════════════════════════════════════════
+     JAVASCRIPT
+══════════════════════════════════════════════════════ -->
+<script>
+// ─── COSTANTI ───────────────────────────────────────────
+const CHECKLIST_ITEMS = [
+  "Verifica funzionamento impianto",
+  "Aggiornamento firmware / software",
+  "Verifica collegamenti elettrici in quadro",
+  "Test servocomandi",
+  "Test e controllo sensori",
+  "Test e controllo bus di comunicazione"
+];
+
+// Google Drive API – inserire il proprio Client ID
+const GDRIVE_CLIENT_ID = "224308827712-26jn5dqoi0i0ml4s37ngh1mcuc6kmbni.apps.googleusercontent.com";
+const GDRIVE_SCOPE     = "https://www.googleapis.com/auth/drive.file";
+
+
+// ═══════════════════════════════════════════════════════════
+// LISTA TECNICI  ←  modificare con i dati reali
+// ═══════════════════════════════════════════════════════════
+const TECNICI = [
+  { nome: "Gianni Manfrin",  pin: "1969", admin: true  },
+  { nome: "Nicola Moro",     pin: "1963", admin: false },
+  { nome: "Chiara Vulpone",  pin: "1963", admin: false },
+  { nome: "Eghlis Gallo",    pin: "1963", admin: false },
+  { nome: "Luca Bonotto",    pin: "1963", admin: false },
+  { nome: "Jacopo Lizza",    pin: "1963", admin: false },
+];
+// admin: true  → vede tutti i rapporti in archivio
+// admin: false → vede solo i propri rapporti
+// ═══════════════════════════════════════════════════════════
+
+let currentTecnico = null; // tecnico loggato
+
+// ─── STATO GLOBALE ──────────────────────────────────────
+let currentStep   = 1;
+let firmaCtx      = null;
+let firmaDrawing  = false;
+let hasFirema     = false;
+let rapportoId    = null;
+let pdfBlob       = null;
+let gAccessToken  = null;
+
+// ─── INIT ────────────────────────────────────────────────
+document.addEventListener("DOMContentLoaded", () => {
+  initLogin();
+
+  // Data odierna come default
+  document.getElementById("dataIntervento").value = new Date().toISOString().split("T")[0];
+  // N° rapporto auto
+  document.getElementById("nRapporto").value = "RFL-" + Date.now().toString(36).toUpperCase();
+
+  buildChecklist();
+  addMateriale();
+
+  // Rilevare se siamo su pagina di firma remota
+  const params = new URLSearchParams(location.search);
+  if (params.has("rid")) {
+    showRemoteSignScreen(params.get("rid"));
+  }
+});
+
+// ─── STEPS ──────────────────────────────────────────────
+function goStep(n) {
+  if (n > 1 && !validateStep(currentStep)) return;
+
+  document.getElementById("step" + currentStep).style.display = "none";
+  currentStep = n;
+  document.getElementById("step" + n).style.display = "block";
+
+  // Inizializza canvas firma quando lo step 3 diventa visibile
+  if (n === 3) {
+    setTimeout(() => {
+      initFirmaCanvas();
+    }, 80);
+  }
+
+  // aggiorna status bar
+  document.querySelectorAll(".status-step").forEach(el => {
+    const s = +el.dataset.step;
+    el.classList.remove("active", "done");
+    if (s < n) el.classList.add("done");
+    else if (s === n) el.classList.add("active");
+  });
+
+  window.scrollTo({ top: 0, behavior: "smooth" });
+}
+
+function validateStep(n) {
+  if (n === 1) {
+    if (!v("clienteNome") || !v("impianto") || !v("tecnico")) {
+      toast("Compilare ragione sociale, impianto e tecnico", "error"); return false;
+    }
+  }
+  if (n === 2) {
+    if (!v("descrizione")) {
+      toast("Inserire una descrizione dell'intervento", "error"); return false;
+    }
+  }
+  return true;
+}
+
+function v(id) { return document.getElementById(id).value.trim(); }
+
+// ─── CHECKLIST ──────────────────────────────────────────
+function buildChecklist() {
+  const c = document.getElementById("checklist");
+  CHECKLIST_ITEMS.forEach((item, i) => {
+    const row = document.createElement("label");
+    row.className = "check-item";
+    row.innerHTML = `<input type="checkbox" id="chk${i}"><span class="check-label">${item}</span>`;
+    c.appendChild(row);
+  });
+}
+
+function getChecklist() {
+  return CHECKLIST_ITEMS.map((item, i) => ({
+    label: item,
+    checked: document.getElementById("chk" + i)?.checked
+  }));
+}
+
+// ─── MATERIALI ───────────────────────────────────────────
+let matCount = 0;
+function addMateriale() {
+  const list = document.getElementById("materialiList");
+  const id   = ++matCount;
+  const row  = document.createElement("div");
+  row.className = "materiale-row";
+  row.id        = "mat" + id;
+  row.innerHTML = `
+    <input type="text" placeholder="Descrizione ricambio/materiale" class="mat-desc">
+    <input type="number" class="qty-input mat-qty" min="1" value="1" placeholder="Q.">
+    <button class="btn-icon" onclick="removeMat(${id})">×</button>`;
+  list.appendChild(row);
+}
+function removeMat(id) {
+  const el = document.getElementById("mat" + id);
+  if (el) el.remove();
+}
+function getMateriali() {
+  return [...document.querySelectorAll(".materiale-row")].map(row => ({
+    desc: row.querySelector(".mat-desc").value.trim(),
+    qty:  row.querySelector(".mat-qty").value
+  })).filter(m => m.desc);
+}
+
+// ─── CANVAS FIRMA (in presenza) ───────────────────────────
+let firmaCanvasInited = false;
+function initFirmaCanvas() {
+  const wrap   = document.getElementById("firmaWrap");
+  const canvas = document.getElementById("firmaCanvas");
+  const ctx    = canvas.getContext("2d");
+  firmaCtx     = ctx;
+
+  function setupCtx() {
+    ctx.strokeStyle = "#1A2E4A";
+    ctx.lineWidth   = 2.5;
+    ctx.lineCap     = "round";
+    ctx.lineJoin    = "round";
+  }
+
+  // Imposta dimensioni reali ora che il contenitore è visibile
+  canvas.width  = wrap.offsetWidth;
+  canvas.height = 180;
+  setupCtx();
+
+  // Evita di aggiungere listener duplicati
+  if (firmaCanvasInited) return;
+  firmaCanvasInited = true;
+
+  window.addEventListener("resize", () => {
+    if (currentStep !== 3) return;
+    const img = canvas.toDataURL();
+    const hadFirma = hasFirema;
+    canvas.width  = wrap.offsetWidth;
+    canvas.height = 180;
+    setupCtx();
+    if (hadFirma) {
+      const i = new Image();
+      i.onload = () => ctx.drawImage(i, 0, 0);
+      i.src = img;
+    }
+  });
+
+  // Mouse: usa offsetX/offsetY — sempre corretti indipendentemente dallo scroll
+  canvas.addEventListener("mousedown", e => {
+    firmaDrawing = true;
+    ctx.beginPath();
+    ctx.moveTo(e.offsetX, e.offsetY);
+  });
+  canvas.addEventListener("mousemove", e => {
+    if (!firmaDrawing) return;
+    ctx.lineTo(e.offsetX, e.offsetY);
+    ctx.stroke();
+    markFirma();
+  });
+  canvas.addEventListener("mouseup",   () => { firmaDrawing = false; });
+  canvas.addEventListener("mouseleave",() => { firmaDrawing = false; });
+
+  // Touch: calcola posizione relativa al canvas
+  const getTouchPos = e => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    const scaleX = canvas.width  / r.width;
+    const scaleY = canvas.height / r.height;
+    return {
+      x: (t.clientX - r.left) * scaleX,
+      y: (t.clientY - r.top)  * scaleY
+    };
+  };
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); firmaDrawing = true; const p = getTouchPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+  canvas.addEventListener("touchmove",  e => { e.preventDefault(); if (!firmaDrawing) return; const p = getTouchPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); markFirma(); }, { passive: false });
+  canvas.addEventListener("touchend",   () => { firmaDrawing = false; });
+}
+
+function markFirma() {
+  hasFirema = true;
+  document.getElementById("firmaWrap").classList.add("has-firma");
+}
+
+function clearFirma() {
+  const canvas = document.getElementById("firmaCanvas");
+  firmaCtx.clearRect(0, 0, canvas.width, canvas.height);
+  hasFirema = false;
+  document.getElementById("firmaWrap").classList.remove("has-firma");
+}
+
+function getFirmaDataUrl() {
+  return hasFirema ? document.getElementById("firmaCanvas").toDataURL("image/png") : null;
+}
+
+// ─── CANVAS FIRMA REMOTA ──────────────────────────────────
+let remoteFirmaCtx = null;
+let remoteFirmaDrawing = false;
+let hasRemoteFirma = false;
+
+function initRemoteFirmaCanvas() {
+  const wrap   = document.getElementById("remoteFirmaWrap");
+  const canvas = document.getElementById("remoteFirmaCanvas");
+  const ctx    = canvas.getContext("2d");
+  remoteFirmaCtx = ctx;
+
+  canvas.width  = wrap.offsetWidth || 340;
+  canvas.height = 200;
+  ctx.strokeStyle = "#1A2E4A";
+  ctx.lineWidth   = 2.5;
+  ctx.lineCap     = "round";
+  ctx.lineJoin    = "round";
+
+  // Mouse
+  canvas.addEventListener("mousedown", e => { remoteFirmaDrawing = true; ctx.beginPath(); ctx.moveTo(e.offsetX, e.offsetY); });
+  canvas.addEventListener("mousemove", e => { if (!remoteFirmaDrawing) return; ctx.lineTo(e.offsetX, e.offsetY); ctx.stroke(); hasRemoteFirma = true; wrap.classList.add("has-firma"); });
+  canvas.addEventListener("mouseup",    () => { remoteFirmaDrawing = false; });
+  canvas.addEventListener("mouseleave", () => { remoteFirmaDrawing = false; });
+
+  // Touch
+  const getTouchPos = e => {
+    const r = canvas.getBoundingClientRect();
+    const t = e.touches[0];
+    const scaleX = canvas.width  / r.width;
+    const scaleY = canvas.height / r.height;
+    return { x: (t.clientX - r.left) * scaleX, y: (t.clientY - r.top) * scaleY };
+  };
+  canvas.addEventListener("touchstart", e => { e.preventDefault(); remoteFirmaDrawing = true; const p = getTouchPos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); }, { passive: false });
+  canvas.addEventListener("touchmove",  e => { e.preventDefault(); if (!remoteFirmaDrawing) return; const p = getTouchPos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); hasRemoteFirma = true; wrap.classList.add("has-firma"); }, { passive: false });
+  canvas.addEventListener("touchend",   () => { remoteFirmaDrawing = false; });
+}
+
+function clearRemoteFirma() {
+  remoteFirmaCtx.clearRect(0, 0, document.getElementById("remoteFirmaCanvas").width, 200);
+  hasRemoteFirma = false;
+  document.getElementById("remoteFirmaWrap").classList.remove("has-firma");
+}
+
+// ─── GENERA LINK REMOTO ───────────────────────────────────
+async function generaLink() {
+  if (!validateStep(1) || !validateStep(2)) return;
+  if (!window._firebaseReady) { toast("Firebase non configurato", "error"); return; }
+
+  const dati = raccogliDati();
+  rapportoId = dati.id;
+  const scadenzaMin = +document.getElementById("scadenzaLink").value;
+  const scadenzaMs  = Date.now() + scadenzaMin * 60 * 1000;
+
+  try {
+    await window._fbSetDoc(
+      window._fbDoc(window._db, "rapporti", rapportoId),
+      { ...dati, stato: "attesa_firma", scadenzaMs, firmaData: null }
+    );
+
+    const baseUrl = location.origin + location.pathname;
+    const link    = `${baseUrl}?rid=${rapportoId}`;
+    document.getElementById("linkUrl").textContent = link;
+
+    const scadenzaDate = new Date(scadenzaMs);
+    document.getElementById("linkMeta").textContent =
+      `Scade alle ${scadenzaDate.toLocaleTimeString("it-IT", { hour:"2-digit", minute:"2-digit" })} (${scadenzaMin} min)`;
+
+    document.getElementById("linkBox").classList.add("visible");
+    toast("Link generato!", "success");
+  } catch(e) {
+    toast("Errore Firebase: " + e.message, "error");
+  }
+}
+
+function condividiLink() {
+  const url   = document.getElementById("linkUrl").textContent;
+  const testo = `Gentile Cliente,\nla invitiamo a firmare il rapporto di intervento ATIX al seguente link (valido per un tempo limitato):\n${url}`;
+  if (navigator.share) {
+    navigator.share({ title: "Firma Rapporto ATIX", text: testo, url });
+  } else {
+    navigator.clipboard.writeText(url);
+    toast("Link copiato negli appunti");
+  }
+}
+
+// ─── RACCOGLIE TUTTI I DATI ────────────────────────────────
+function raccogliDati() {
+  return {
+    id:          v("nRapporto") || "RFL-" + Date.now().toString(36).toUpperCase(),
+    clienteNome: v("clienteNome"),
+    clienteRef:  v("clienteRef"),
+    impianto:    v("impianto"),
+    ordineN:     v("ordineN"),
+    tipoIntervento: {
+      manutenzione: document.getElementById("tipoManutenzione").checked,
+      chiamata:     document.getElementById("tipoChiamata").checked,
+      offerta:      document.getElementById("tipoOfferta").checked,
+      garanzia:     document.getElementById("tipoGaranzia").checked
+    },
+    data:        v("dataIntervento"),
+    tecnico:     v("tecnico"),
+    descrizione: v("descrizione"),
+    checklist:   getChecklist(),
+    materiali:   getMateriali(),
+    ore: {
+      ordinarie:   document.getElementById("oreOrd").value,
+      straordinarie: document.getElementById("oreStr").value,
+      kmTrasferta: document.getElementById("kmTras").value,
+      pasto:       document.getElementById("chkPasto").checked,
+      parcheggio:  document.getElementById("chkParcheggio").checked,
+      statoLavoro: document.querySelector('input[name="statoLavoro"]:checked')?.value || "Conclusione Lavori"
+    },
+    firmatario:  v("firmatario"),
+    firmaData:   getFirmaDataUrl(),
+    createdAt:   new Date().toISOString()
+  };
+}
+
+// ─── COMPLETA RAPPORTO (firma in presenza) ────────────────
+async function completaRapporto() {
+  const disclaimerLocale = document.getElementById("accettoDisclaimerLocale");
+  if (disclaimerLocale && !disclaimerLocale.checked) {
+    toast("Accettare l'informativa privacy per procedere", "error"); return;
+  }
+  const dati = raccogliDati();
+  const pdf  = generaPDF(dati);
+  pdfBlob    = pdf.output("blob");
+  rapportoId = dati.id;
+
+  // Salva su Firebase
+  if (window._firebaseReady) {
+    try {
+      await window._fbSetDoc(
+        window._fbDoc(window._db, "rapporti", rapportoId),
+        { ...dati, stato: "firmato", firmaData: dati.firmaData || null }
+      );
+      toast("Rapporto salvato ✓", "success");
+    } catch(e) { console.warn("Firebase:", e); }
+  }
+
+  // Download PDF locale diretto, senza Google Drive
+  const nome = `RDL_${dati.id}_${(dati.clienteNome || "").replace(/\s+/g,"_")}.pdf`;
+  pdf.save(nome);
+  completaStep4(dati.id);
+}
+
+// ─── GENERA PDF ───────────────────────────────────────────
+function generaPDF(d) {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ unit: "mm", format: "a4" });
+  const W = 210, M = 15, CW = W - M * 2;
+  let y = M;
+
+  const blu   = [26, 46, 74];
+  const arancio = [232, 96, 10];
+  const grigio = [107, 119, 133];
+  const linea  = [221, 226, 234];
+
+  // Header
+  doc.setFillColor(...blu);
+  doc.rect(0, 0, W, 28, "F");
+  doc.setTextColor(232, 96, 10);
+  doc.setFontSize(24); doc.setFont("helvetica", "bold");
+  doc.text("ATIX", M, 18);
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(11); doc.setFont("helvetica", "normal");
+  doc.text("Rapporto di Lavoro", M + 30, 18);
+  doc.setFontSize(16);
+  doc.text(`N° ${d.id}  –  ${formatDate(d.data)}`, W - M, 17, { align: "right" });
+  y = 36;
+
+  const sez = (titolo) => {
+    doc.setFillColor(...arancio);
+    doc.rect(M, y, CW, 7, "F");
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(9); doc.setFont("helvetica", "bold");
+    doc.text(titolo.toUpperCase(), M + 3, y + 4.8);
+    y += 11;
+    doc.setTextColor(...blu);
+  };
+
+  const riga = (label, val) => {
+    doc.setFontSize(8.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...grigio);
+    doc.text(label, M, y);
+    doc.setFont("helvetica", "normal"); doc.setTextColor(...blu);
+    doc.text(val || "—", M + 45, y);
+    y += 6;
+  };
+
+  // Cliente
+  sez("Cliente e impianto");
+  riga("Ragione sociale:", d.clienteNome);
+  riga("Referente:", d.clienteRef);
+  riga("Impianto / Sede:", d.impianto);
+  riga("Ordine N°:", d.ordineN);
+  // Tipo intervento
+  const tipi = [];
+  if (d.tipoIntervento?.manutenzione) tipi.push("Manutenzione da contratto");
+  if (d.tipoIntervento?.chiamata)     tipi.push("Su chiamata");
+  if (d.tipoIntervento?.offerta)      tipi.push("Su offerta / ordine");
+  if (d.tipoIntervento?.garanzia)     tipi.push("In garanzia");
+  riga("Tipo intervento:", tipi.length ? tipi.join(", ") : "—");
+  riga("Tecnico:", d.tecnico);
+  y += 3;
+
+  // Checklist
+  const checked = d.checklist ? d.checklist.filter(c => c.checked) : [];
+  if (checked.length) {
+    sez("Attività svolte");
+    checked.forEach(c => {
+      doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(...blu);
+      doc.text(`[x] ${c.label}`, M + 2, y);
+      y += 5.5;
+    });
+    y += 3;
+  }
+
+  // Descrizione
+  sez("Descrizione intervento");
+  doc.setFontSize(9.5); doc.setFont("helvetica", "normal"); doc.setTextColor(...blu);
+  const lines = doc.splitTextToSize(d.descrizione || "—", CW);
+  doc.text(lines, M, y);
+  y += lines.length * 5 + 5;
+
+  // Materiali
+  if (d.materiali && d.materiali.length) {
+    sez("Materiali / Ricambi utilizzati");
+    d.materiali.forEach(m => {
+      doc.setFontSize(9); doc.setFont("helvetica", "normal"); doc.setTextColor(...blu);
+      doc.text(`• ${m.desc}`, M + 2, y);
+      doc.text(`Q. ${m.qty}`, W - M, y, { align: "right" });
+      y += 5.5;
+    });
+    y += 3;
+  }
+
+  // Ore
+  sez("Ore di lavoro e viaggio");
+  const oreItems = [
+    ["Ore lavoro:", d.ore.ordinarie + " h"],
+    ["Ore viaggio:", d.ore.straordinarie + " h"],
+    ["Km trasferta:", d.ore.kmTrasferta + " km"],
+    ["Pasto:", d.ore.pasto ? "Si" : "No"],
+    ["Parcheggio:", d.ore.parcheggio ? "Si" : "No"],
+    ["Stato lavoro:", d.ore.statoLavoro || "Conclusione Lavori"],
+  ];
+  oreItems.forEach(([l, v]) => riga(l, v));
+  y += 3;
+
+  // Firma
+  sez("Firma cliente");
+  if (d.firmaData) {
+    doc.addImage(d.firmaData, "PNG", M, y, 80, 30);
+    y += 34;
+  } else {
+    doc.setDrawColor(...linea);
+    doc.rect(M, y, 80, 30);
+    doc.setFontSize(8); doc.setTextColor(...grigio);
+    doc.text("Firma in attesa", M + 2, y + 5);
+    y += 34;
+  }
+  doc.setFontSize(9); doc.setFont("helvetica", "bold"); doc.setTextColor(...blu);
+  doc.text(d.firmatario || "", M, y);
+  y += 5;
+  doc.setFontSize(8); doc.setFont("helvetica", "normal"); doc.setTextColor(...grigio);
+  doc.text(`Firmato il ${new Date().toLocaleDateString("it-IT")}`, M, y);
+
+  // Disclaimer GDPR — posizione fissa sopra il footer
+  const footerY = 282;
+  const disclaimerH = 18;
+  const disclaimerY = footerY - disclaimerH - 2;
+
+  doc.setFillColor(245, 247, 250);
+  doc.rect(M, disclaimerY, CW, disclaimerH, "F");
+  doc.setDrawColor(...linea);
+  doc.rect(M, disclaimerY, CW, disclaimerH);
+  doc.setFontSize(6.5); doc.setFont("helvetica", "bold"); doc.setTextColor(...grigio);
+  doc.text("INFORMATIVA PRIVACY (art. 13 GDPR)", M + 3, disclaimerY + 4.5);
+  doc.setFont("helvetica", "normal");
+  const disclaimerText = "Firmando il presente rapporto il sottoscritto approva le attivita eseguite. I dati personali (nome, firma) sono trattati da ATIX S.r.l. ai sensi dell'art. 6.1(b) GDPR esclusivamente per la gestione documentale degli interventi. Non saranno ceduti a terzi. Diritti: info@atix.it";
+  const disclaimerLines = doc.splitTextToSize(disclaimerText, CW - 6);
+  doc.text(disclaimerLines, M + 3, disclaimerY + 9);
+
+  // Footer fisso
+  doc.setFillColor(...linea);
+  doc.rect(0, footerY, W, 10, "F");
+  doc.setFontSize(7.5); doc.setTextColor(...grigio);
+  doc.text("ATIX S.r.l. – Smart Building Solutions | Cazzago di Pianiga (VE)", W / 2, footerY + 6, { align: "center" });
+
+  return doc;
+}
+
+function formatDate(d) {
+  if (!d) return "";
+  const [y, m, g] = d.split("-");
+  return `${g}/${m}/${y}`;
+}
+
+// ─── GOOGLE DRIVE UPLOAD ──────────────────────────────────
+async function uploadGDrive(pdf, dati) {
+  try {
+    await caricaGDriveScript();
+    const token = await getGAccessToken();
+    if (!token) { toast("Accesso Google annullato", "error"); return; }
+
+    toast("Caricamento su Google Drive…");
+    const bytes = pdf.output("arraybuffer");
+    const blob  = new Blob([bytes], { type: "application/pdf" });
+    const nome  = `RFL_${dati.id}_${dati.clienteNome.replace(/\s+/g,"_")}.pdf`;
+
+    const form = new FormData();
+    form.append("metadata", new Blob([JSON.stringify({ name: nome, mimeType: "application/pdf" })], { type: "application/json" }));
+    form.append("file", blob);
+
+    const resp = await fetch("https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart", {
+      method: "POST",
+      headers: { Authorization: "Bearer " + token },
+      body: form
+    });
+
+    if (resp.ok) {
+      toast("PDF salvato su Google Drive ✓", "success");
+      completaStep4(dati.id);
+    } else {
+      const err = await resp.json();
+      throw new Error(err.error?.message || resp.status);
+    }
+  } catch(e) {
+    toast("Drive non configurato – PDF disponibile localmente", "error");
+    completaStep4(dati.id, true);
+  }
+}
+
+function caricaGDriveScript() {
+  return new Promise(resolve => {
+    if (window.google?.accounts) { resolve(); return; }
+    const s = document.createElement("script");
+    s.src = "https://accounts.google.com/gsi/client";
+    s.onload = resolve;
+    document.head.appendChild(s);
+  });
+}
+
+function getGAccessToken() {
+  return new Promise(resolve => {
+    if (gAccessToken) { resolve(gAccessToken); return; }
+    if (!window.google?.accounts) { resolve(null); return; }
+    const client = google.accounts.oauth2.initTokenClient({
+      client_id: GDRIVE_CLIENT_ID,
+      scope: GDRIVE_SCOPE,
+      callback: r => { gAccessToken = r.access_token; resolve(gAccessToken); }
+    });
+    client.requestAccessToken();
+  });
+}
+
+function completaStep4(id, soloLocale = false) {
+  document.getElementById("riepilogoId").textContent = "ID: " + id;
+  goStep(4);
+  // Aggiorna status bar a "done" su tutti
+  document.querySelectorAll(".status-step").forEach(el => el.classList.add("done"));
+}
+
+function scaricaPDF() {
+  if (!pdfBlob) {
+    const dati = raccogliDati();
+    const pdf  = generaPDF(dati);
+    pdf.save(`RFL_${dati.id}.pdf`);
+    return;
+  }
+  const url = URL.createObjectURL(pdfBlob);
+  const a   = document.createElement("a");
+  a.href = url; a.download = `RFL_${rapportoId}.pdf`; a.click();
+}
+
+function nuovoRapporto() { location.reload(); }
+
+// ─── FIRMA REMOTA (cliente) ───────────────────────────────
+async function showRemoteSignScreen(rid) {
+  document.getElementById("mainForm").style.display  = "none";
+  document.querySelector(".status-bar").style.display = "none";
+  // Nascondi il pulsante Archivio nell'header
+  const btnArchivio = document.querySelector(".app-header button");
+  if (btnArchivio) btnArchivio.style.display = "none";
+  document.getElementById("remote-sign-screen").classList.add("active");
+
+  if (!window._firebaseReady) {
+    await new Promise(r => document.addEventListener("firebaseReady", r, { once: true }));
+  }
+
+  try {
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, "rapporti", rid));
+    if (!snap.exists()) { mostraScaduto(); return; }
+
+    const d = snap.data();
+
+    if (Date.now() > d.scadenzaMs) { mostraScaduto(); return; }
+    if (d.stato === "firmato")     { mostraGiaFirmato(); return; }
+
+    // Mostra preview
+    const pc = document.getElementById("remotePreviewContent");
+    const tipoList = [
+      d.tipoIntervento?.manutenzione && 'Manutenzione da contratto',
+      d.tipoIntervento?.chiamata     && 'Su chiamata',
+      d.tipoIntervento?.offerta      && 'Su offerta / ordine',
+      d.tipoIntervento?.garanzia     && 'In garanzia'
+    ].filter(Boolean).join(', ') || '—';
+
+    const materialiHtml = (d.materiali && d.materiali.length)
+      ? d.materiali.map(m => `<li>${m.desc} — Q. ${m.qty}</li>`).join('')
+      : '<li>Nessuno</li>';
+
+    const checklistHtml = (d.checklist && d.checklist.filter(c => c.checked).length)
+      ? d.checklist.filter(c => c.checked).map(c => `<li>${c.label}</li>`).join('')
+      : '<li>Nessuna attività selezionata</li>';
+
+    pc.innerHTML = `
+      <table style="width:100%;font-size:14px;line-height:2;border-collapse:collapse">
+        <tr><td style="color:var(--grey-text);width:40%"><b>Cliente</b></td><td>${d.clienteNome || '—'}</td></tr>
+        <tr><td style="color:var(--grey-text)"><b>Referente</b></td><td>${d.clienteRef || '—'}</td></tr>
+        <tr><td style="color:var(--grey-text)"><b>Impianto</b></td><td>${d.impianto || '—'}</td></tr>
+        <tr><td style="color:var(--grey-text)"><b>Ordine N°</b></td><td>${d.ordineN || '—'}</td></tr>
+        <tr><td style="color:var(--grey-text)"><b>Data</b></td><td>${formatDate(d.data)}</td></tr>
+        <tr><td style="color:var(--grey-text)"><b>Tecnico</b></td><td>${d.tecnico || '—'}</td></tr>
+        <tr><td style="color:var(--grey-text)"><b>Tipo intervento</b></td><td>${tipoList}</td></tr>
+      </table>
+      <hr style="margin:12px 0;border:none;border-top:1px solid var(--grey-line)">
+      <b style="font-size:13px;color:var(--grey-text)">DESCRIZIONE INTERVENTO</b>
+      <p style="font-size:14px;margin:8px 0 12px;white-space:pre-wrap">${d.descrizione || '—'}</p>
+      <b style="font-size:13px;color:var(--grey-text)">ATTIVITÀ SVOLTE</b>
+      <ul style="font-size:14px;margin:8px 0 12px;padding-left:18px">${checklistHtml}</ul>
+      <b style="font-size:13px;color:var(--grey-text)">MATERIALI UTILIZZATI</b>
+      <ul style="font-size:14px;margin:8px 0 12px;padding-left:18px">${materialiHtml}</ul>
+      <b style="font-size:13px;color:var(--grey-text)">ORE</b>
+      <table style="width:100%;font-size:14px;line-height:2;border-collapse:collapse;margin-top:4px">
+        <tr><td style="color:var(--grey-text)">Ore lavoro</td><td>${d.ore?.ordinarie || 0} h</td></tr>
+        <tr><td style="color:var(--grey-text)">Ore viaggio</td><td>${d.ore?.straordinarie || 0} h</td></tr>
+        <tr><td style="color:var(--grey-text)">Km trasferta</td><td>${d.ore?.kmTrasferta || 0} km</td></tr>
+        <tr><td style="color:var(--grey-text)">Pasto</td><td>${d.ore?.pasto ? 'Si' : 'No'}</td></tr>
+        <tr><td style="color:var(--grey-text)">Parcheggio</td><td>${d.ore?.parcheggio ? 'Si' : 'No'}</td></tr>
+        <tr><td style="color:var(--grey-text)">Stato lavoro</td><td>${d.ore?.statoLavoro || 'Conclusione Lavori'}</td></tr>
+      </table>
+    `;
+
+    rapportoId = rid;
+    setTimeout(initRemoteFirmaCanvas, 100);
+  } catch(e) {
+    toast("Errore nel caricamento", "error");
+  }
+}
+
+function mostraScaduto() {
+  document.getElementById("remoteExpired").style.display = "block";
+  document.getElementById("btnFirmaRemota").style.display = "none";
+  document.querySelector("#remote-sign-screen .card:nth-child(2)").style.display = "none";
+}
+
+function mostraGiaFirmato() {
+  const box = document.getElementById("remoteSuccess");
+  box.innerHTML = '<p style="font-size:16px;font-weight:600;margin:0">Già firmato</p>';
+  box.style.display = "block";
+  document.getElementById("btnFirmaRemota").style.display = "none";
+  // Nascondi anche il card firma
+  const cards = document.querySelectorAll("#remote-sign-screen .card");
+  cards.forEach(c => { if (c !== box) c.style.display = "none"; });
+}
+
+async function inviaFirmaRemota() {
+  const disclaimer = document.getElementById("accettoDisclaimer");
+  if (disclaimer && !disclaimer.checked) { toast("Accettare l'informativa privacy per procedere", "error"); return; }
+  if (!hasRemoteFirma) { toast("Disegnare la firma prima di confermare", "error"); return; }
+  const firmatario = document.getElementById("remoteFirmatario").value.trim();
+  if (!firmatario) { toast("Inserire il nome prima di confermare", "error"); return; }
+
+  const firmaImg = document.getElementById("remoteFirmaCanvas").toDataURL("image/png");
+
+  try {
+    await window._fbUpdateDoc(
+      window._fbDoc(window._db, "rapporti", rapportoId),
+      { stato: "firmato", firmaData: firmaImg, firmatario, firmattoIl: new Date().toISOString() }
+    );
+    document.getElementById("btnFirmaRemota").style.display = "none";
+    document.getElementById("remoteSuccess").style.display = "block";
+    // Blocca area firma
+    const wrap = document.getElementById("remoteFirmaWrap");
+    wrap.style.pointerEvents = "none";
+    wrap.style.opacity = "0.5";
+    document.getElementById("remoteFirmatario").disabled = true;
+  } catch(e) {
+    toast("Errore nell'invio: " + e.message, "error");
+  }
+}
+
+
+// ─── LOGIN ────────────────────────────────────────────────
+function initLogin() {
+  const sel = document.getElementById("loginNome");
+  TECNICI.forEach(t => {
+    const opt = document.createElement("option");
+    opt.value = t.nome;
+    opt.textContent = t.nome;
+    sel.appendChild(opt);
+  });
+}
+
+function doLogin() {
+  const nome = document.getElementById("loginNome").value;
+  const pin  = document.getElementById("loginPin").value;
+  const err  = document.getElementById("loginError");
+
+  const tecnico = TECNICI.find(t => t.nome === nome && t.pin === pin);
+  if (!tecnico) {
+    err.style.display = "block";
+    document.getElementById("loginPin").value = "";
+    return;
+  }
+
+  err.style.display = "none";
+  currentTecnico = tecnico;
+
+  // Nascondi login, mostra app
+  document.getElementById("loginScreen").style.display = "none";
+  document.getElementById("appWrapper").style.display  = "block";
+
+  // Precompila campo tecnico
+  const campoTecnico = document.getElementById("tecnico");
+  if (campoTecnico) campoTecnico.value = tecnico.nome;
+
+  // Mostra/nascondi pulsante admin nell'header
+  const btnArchivio = document.querySelector(".app-header button");
+  if (btnArchivio) btnArchivio.style.display = "inline-block";
+}
+
+function logout() {
+  currentTecnico = null;
+  document.getElementById("appWrapper").style.display  = "none";
+  document.getElementById("loginScreen").style.display = "flex";
+  document.getElementById("loginPin").value = "";
+  document.getElementById("loginNome").value = "";
+  // Reset form
+  location.reload();
+}
+
+// ─── CRONOLOGIA ──────────────────────────────────────────────
+function tornaAlForm() {
+  document.getElementById("cronologiaSection").style.display = "none";
+  document.getElementById("mainForm").style.display = "block";
+  document.querySelector(".status-bar").style.display = "flex";
+}
+
+function vaiCronologia() {
+  // Nascondi form e mostra cronologia
+  document.getElementById("mainForm").style.display = "none";
+  document.querySelector(".status-bar").style.display = "none";
+  document.getElementById("cronologiaSection").style.display = "block";
+  caricaCronologia();
+}
+
+async function caricaCronologia() {
+  const list = document.getElementById("cronologiaList");
+  list.innerHTML = '<p style="text-align:center;color:var(--grey-text);padding:20px">Caricamento...</p>';
+
+  if (!window._firebaseReady) {
+    await new Promise(r => document.addEventListener("firebaseReady", r, { once: true }));
+  }
+
+  try {
+    const { getDocs, collection, orderBy, query, limit } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    const q = query(collection(window._db, "rapporti"), orderBy("createdAt", "desc"), limit(50));
+    const snap = await getDocs(q);
+
+    if (snap.empty) {
+      list.innerHTML = '<p style="text-align:center;color:var(--grey-text);padding:30px">Nessun rapporto trovato.</p>';
+      return;
+    }
+
+    list.innerHTML = "";
+    snap.forEach(docSnap => {
+      const d = docSnap.data();
+      // Filtro per tecnico: admin vede tutto, gli altri solo i propri
+      if (currentTecnico && !currentTecnico.admin) {
+        if (d.tecnico !== currentTecnico.nome) return;
+      }
+      const isFirmato = d.stato === "firmato";
+      const card = document.createElement("div");
+      card.className = "rap-card " + (isFirmato ? "firmato" : "attesa");
+      card.innerHTML = `
+        <div class="rap-card-header">
+          <span class="rap-card-id">${d.id || docSnap.id}</span>
+          <span class="rap-card-stato ${isFirmato ? 'firmato' : 'attesa'}">${isFirmato ? '✓ Firmato' : '⏳ In attesa'}</span>
+        </div>
+        <div class="rap-card-cliente">${d.clienteNome || '—'}</div>
+        <div class="rap-card-info">${d.impianto || ''} · ${formatDate(d.data)} · ${d.tecnico || ''}</div>
+        <div class="rap-card-actions">
+          <button class="rap-btn" style="background:#EEF3FB;color:var(--blue-mid);border:1px solid #C5D4E8" onclick="visualizzaPDF('${docSnap.id}')">👁 Visualizza</button>
+          <button class="rap-btn rap-btn-dl" onclick="scaricaPDFById('${docSnap.id}')">⬇ PDF</button>
+          ${!isFirmato ? `<button class="rap-btn rap-btn-edit" onclick="editRapporto('${docSnap.id}')">✏ Modifica</button>` : ''}
+          <button class="rap-btn" style="background:#FEE8E8;color:var(--red);border:1px solid #F5C4C4" onclick="eliminaRapporto('${docSnap.id}', this)">🗑 Elimina</button>
+        </div>`;
+      list.appendChild(card);
+    });
+  } catch(e) {
+    list.innerHTML = '<p style="text-align:center;color:var(--red);padding:20px">Errore: ' + e.message + '</p>';
+  }
+}
+
+async function eliminaRapporto(id, btn) {
+  if (!confirm("Eliminare definitivamente questo rapporto? L'operazione non è reversibile.")) return;
+  if (!window._firebaseReady) return;
+  try {
+    const { deleteDoc } = await import("https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js");
+    await deleteDoc(window._fbDoc(window._db, "rapporti", id));
+    // Rimuovi la card dal DOM
+    const card = btn.closest(".rap-card");
+    card.style.transition = "opacity .3s";
+    card.style.opacity = "0";
+    setTimeout(() => card.remove(), 300);
+    toast("Rapporto eliminato", "success");
+  } catch(e) {
+    toast("Errore eliminazione: " + e.message, "error");
+  }
+}
+
+async function visualizzaPDF(id) {
+  if (!window._firebaseReady) return;
+  try {
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, "rapporti", id));
+    if (!snap.exists()) { toast("Rapporto non trovato", "error"); return; }
+    const d = snap.data();
+    const pdf = generaPDF(d);
+    // Apre il PDF inline nel browser in una nuova scheda
+    const blob = pdf.output("blob");
+    const url  = URL.createObjectURL(blob);
+    window.open(url, "_blank");
+    setTimeout(() => URL.revokeObjectURL(url), 30000);
+  } catch(e) {
+    toast("Errore visualizzazione: " + e.message, "error");
+  }
+}
+
+async function scaricaPDFById(id) {
+  if (!window._firebaseReady) return;
+  try {
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, "rapporti", id));
+    if (!snap.exists()) { toast("Rapporto non trovato", "error"); return; }
+    const d = snap.data();
+    const pdf = generaPDF(d);
+    pdf.save(`RFL_${d.id || id}_${(d.clienteNome||'').replace(/\s+/g,"_")}.pdf`);
+  } catch(e) {
+    toast("Errore download: " + e.message, "error");
+  }
+}
+
+async function editRapporto(id) {
+  if (!window._firebaseReady) return;
+  try {
+    const snap = await window._fbGetDoc(window._fbDoc(window._db, "rapporti", id));
+    if (!snap.exists()) { toast("Rapporto non trovato", "error"); return; }
+    const d = snap.data();
+
+    // Mostra il form
+    document.getElementById("cronologiaSection").style.display = "none";
+    document.getElementById("mainForm").style.display = "block";
+    document.querySelector(".status-bar").style.display = "flex";
+
+    // Popola i campi
+    const sv = (id, val) => { const el = document.getElementById(id); if(el && val !== undefined) el.value = val; };
+    sv("clienteNome", d.clienteNome);
+    sv("clienteRef",  d.clienteRef);
+    sv("impianto",    d.impianto);
+    sv("ordineN",     d.ordineN);
+    sv("dataIntervento", d.data);
+    sv("nRapporto",   d.id);
+    sv("tecnico",     d.tecnico);
+    sv("descrizione", d.descrizione);
+    sv("oreOrd",  d.ore?.ordinarie   || 0);
+    sv("oreStr",  d.ore?.straordinarie || 0);
+    sv("kmTras",  d.ore?.kmTrasferta || 0);
+    const sc2 = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
+    sc2("chkPasto",      d.ore?.pasto);
+    sc2("chkParcheggio", d.ore?.parcheggio);
+    const statoEl = document.querySelector(`input[name="statoLavoro"][value="${d.ore?.statoLavoro || 'Conclusione Lavori'}"]`);
+    if (statoEl) statoEl.checked = true;
+
+    // Tipo intervento
+    if (d.tipoIntervento) {
+      const sc = (id, val) => { const el = document.getElementById(id); if(el) el.checked = !!val; };
+      sc("tipoManutenzione", d.tipoIntervento.manutenzione);
+      sc("tipoChiamata",     d.tipoIntervento.chiamata);
+      sc("tipoOfferta",      d.tipoIntervento.offerta);
+      sc("tipoGaranzia",     d.tipoIntervento.garanzia);
+    }
+
+    // Checklist
+    if (d.checklist) {
+      d.checklist.forEach((item, i) => {
+        const el = document.getElementById("chk" + i);
+        if (el) el.checked = item.checked;
+      });
+    }
+
+    // Materiali
+    document.getElementById("materialiList").innerHTML = "";
+    matCount = 0;
+    if (d.materiali && d.materiali.length) {
+      d.materiali.forEach(m => {
+        addMateriale();
+        const rows = document.querySelectorAll(".materiale-row");
+        const last = rows[rows.length - 1];
+        last.querySelector(".mat-desc").value = m.desc;
+        last.querySelector(".mat-qty").value  = m.qty;
+      });
+    } else {
+      addMateriale();
+    }
+
+    rapportoId = id;
+    goStep(1);
+    toast("Rapporto caricato — modifica e salva di nuovo");
+  } catch(e) {
+    toast("Errore caricamento: " + e.message, "error");
+  }
+}
+
+// ─── TOAST ────────────────────────────────────────────────
+function toast(msg, tipo = "") {
+  const t = document.getElementById("toast");
+  t.textContent = msg;
+  t.className   = "show " + tipo;
+  setTimeout(() => t.className = "", 3200);
+}
+</script>
+</div><!-- /appWrapper -->
+</body>
+</html>
